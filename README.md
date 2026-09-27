@@ -15,3 +15,17 @@ An intelligent Applicant Tracking System (ATS) that evaluates resumes against jo
 - **Frontend:** Streamlit
 - **AI / NLP:** Groq API, Sentence Transformers, PyTorch
 - **Database:** Supabase
+
+## Demo 
+
+<img width="1440" height="900" alt="demo" src="https://github.com/user-attachments/assets/8b9f872c-7db4-42aa-81a7-43751b05cdbe" />
+
+<img width="1440" height="900" alt="demo2" src="https://github.com/user-attachments/assets/6b53877f-726e-4d58-b9af-6ed3ac7fb2de" />
+
+<img width="1440" height="900" alt="demo3" src="https://github.com/user-attachments/assets/6bf903eb-386e-4367-8080-94ee453463e2" />
+
+<img width="1440" height="900" alt="demo4" src="https://github.com/user-attachments/assets/faf1464a-65b7-40ef-b505-26df63d8c09b" />
+
+<img width="1440" height="900" alt="demo5" src="https://github.com/user-attachments/assets/e4264e98-3031-4df4-82bf-4d7320b546fc" />
+
+
