@@ -1,0 +1,14 @@
+.env
+*.env
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+*.log
+.DS_Store
+.vscode/
+*.safetensors
+*.bin
+*.zip
+model_training/models/
+model_training/checkpoints/
