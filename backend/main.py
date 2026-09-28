@@ -27,9 +27,11 @@ logger = logging.getLogger("ats_resume_scorer")
 
 # Hugging Face Free API setup to replace local PyTorch/SentenceTransformers
 HF_TOKEN = os.getenv("HF_TOKEN")
-# Clean model name if passed as a full repo or path
 model_identifier = SENTENCE_TRANSFORMER_MODEL.split('/')[-1] if '/' in SENTENCE_TRANSFORMER_MODEL else SENTENCE_TRANSFORMER_MODEL
 HF_API_URL = f"https://api-inference.huggingface.co/pipeline/feature-extraction/{SENTENCE_TRANSFORMER_MODEL}"
+
+# Live Streamlit App URL for OAuth redirects
+FRONTEND_URL = os.getenv("FRONTEND_URL", "https://pubnp3sbcbnnwu.streamlit.app").rstrip("/")
 
 class HuggingFaceEmbedder:
     """Lightweight API client for embeddings matching SentenceTransformer output structure."""
@@ -51,7 +53,6 @@ class HuggingFaceEmbedder:
             response.raise_for_status()
             data = response.json()
 
-        # Format array into numpy array matching sentence-transformers format
         arr = np.array(data)
         if convert_to_numpy:
             if normalize_embeddings:
@@ -67,7 +68,6 @@ async def lifespan(app: FastAPI):
     logger.info("starting ATS Resume Analyser API.......")
     import spacy
 
-    # Clean model strings to strip accidental quotes like '"en_core_web_sm'
     primary_model = (SPACY_MODEL_PRIMARY or "en_core_web_sm").strip('\'"')
     secondary_model = (SPACY_MODEL_SECONDARY or "en_core_web_sm").strip('\'"')
 
@@ -77,9 +77,7 @@ async def lifespan(app: FastAPI):
         app.state.nlp = spacy.load(primary_model)
         logger.info(f"Loaded {primary_model}")
     except OSError:
-        logger.warning(
-            f"{primary_model} not found - falling back to {secondary_model}"
-        )
+        logger.warning(f"{primary_model} not found - falling back to {secondary_model}")
         try:
             app.state.nlp = spacy.load(secondary_model)
             logger.info(f"Loaded {secondary_model} (fallback)")
@@ -87,7 +85,6 @@ async def lifespan(app: FastAPI):
             logger.warning("Fallback model failed. Defaulting to 'en_core_web_sm'")
             app.state.nlp = spacy.load("en_core_web_sm")
 
-    # Lightweight embedder initialization
     logger.info(f"Connecting to Hugging Face Embedder: {SENTENCE_TRANSFORMER_MODEL}")
     app.state.embedder = HuggingFaceEmbedder(HF_API_URL, HF_TOKEN)
     logger.info("Embedder ready via Hugging Face API")
@@ -108,7 +105,7 @@ app = FastAPI(
     redoc_url="/redoc",
 )
 
-# Fix CORS Settings: Disable allow_credentials when wildcard '*' origins are used
+# Fix CORS Settings for Browser Fetch Requests
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],
@@ -128,9 +125,9 @@ async def auth_callback(request: Request):
     """Catch OAuth callback parameters and redirect back to Streamlit UI."""
     query_params = str(request.query_params)
     redirect_url = (
-        f"http://localhost:8501?{query_params}"
+        f"{FRONTEND_URL}?{query_params}"
         if query_params
-        else "http://localhost:8501"
+        else FRONTEND_URL
     )
     return RedirectResponse(url=redirect_url)
 

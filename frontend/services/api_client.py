@@ -1,17 +1,23 @@
 from typing import Any, Dict, List
-
 import requests
 import streamlit as st
 
-
-DEFAULT_BACKEND_URL = "http://localhost:8000"
+DEFAULT_BACKEND_URL = "https://ats-resume-analyzer-o66g.onrender.com"
 
 
 def _backend_url() -> str:
+    """Safely fetch backend URL from Streamlit secrets or environment variables with fallback."""
+    # Check top-level secret key first (e.g., BACKEND_URL = "...")
+    if "BACKEND_URL" in st.secrets:
+        return str(st.secrets["BACKEND_URL"]).rstrip("/")
+    
+    # Check nested secret key (e.g., [backend] url = "...")
     try:
-        return st.secrets["backend"]["url"]
-    except (KeyError, FileNotFoundError):
-        return DEFAULT_BACKEND_URL
+        return str(st.secrets["backend"]["url"]).rstrip("/")
+    except (KeyError, AttributeError, TypeError):
+        pass
+
+    return DEFAULT_BACKEND_URL.rstrip("/")
 
 
 def _auth_headers(access_token: str) -> Dict[str, str]:
@@ -19,7 +25,8 @@ def _auth_headers(access_token: str) -> Dict[str, str]:
 
 
 def health_check() -> Dict[str, Any]:
-    response = requests.get(f"{_backend_url()}/api/v1/health", timeout=10)
+    # Increased timeout to 60s to account for Render free tier cold starts
+    response = requests.get(f"{_backend_url()}/api/v1/health", timeout=60)
     response.raise_for_status()
     return response.json()
 
@@ -32,7 +39,9 @@ def analyze_resume(
     files = {
         "resume": (resume_file.name, resume_file.getvalue(), resume_file.type),
     }
-    data = {"job_description": job_description}
+    # Sanitize job_description so empty string doesn't break route parameters
+    data = {"job_description": job_description if job_description.strip() else ""}
+    
     response = requests.post(
         f"{_backend_url()}/api/v1/analyze-resume",
         files=files,
@@ -48,7 +57,7 @@ def get_history(access_token: str) -> List[Dict[str, Any]]:
     response = requests.get(
         f"{_backend_url()}/api/v1/history",
         headers=_auth_headers(access_token),
-        timeout=30,
+        timeout=45,
     )
     response.raise_for_status()
     return response.json()
