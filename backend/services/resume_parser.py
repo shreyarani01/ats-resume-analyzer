@@ -65,31 +65,25 @@ def extract_text_from_docx(file_bytes: bytes) -> str:
         logger.error(f"DOCX extraction failed: {e}")
         raise FileParsingError(f"Could not parse DOCX content: {e}")
 
-
-def parse_resume_file(
-    file_bytes: bytes, filename: str
-) -> Tuple[str, Dict[str, Any]]:
+def parse_resume_file(file_bytes: bytes, filename: str) -> Tuple[str, Dict[str, Any]]:
     """Validate extension and return EXACTLY 2 items: (extracted_text, metadata)."""
     if not file_bytes:
         raise FileValidationError("Uploaded file is empty.")
 
     filename_lower = filename.lower()
-    ext = filename_lower.split(".")[-1] if "." in filename_lower else ""
-
+    
     if filename_lower.endswith(".pdf"):
         text = extract_text_from_pdf(file_bytes)
     elif filename_lower.endswith((".docx", ".doc")):
         text = extract_text_from_docx(file_bytes)
     else:
-        raise FileValidationError(
-            "Unsupported file format. Please upload a PDF or DOCX file."
-        )
+        raise FileValidationError("Unsupported file format. Please upload a PDF or DOCX file.")
 
-    metadata: Dict[str, Any] = {
+    metadata = {
         "filename": filename,
         "size_bytes": len(file_bytes),
-        "extension": ext,
+        "extension": filename_lower.rsplit(".", 1)[-1] if "." in filename_lower else ""
     }
 
-    # Single return guarantees a 2-tuple: (str, Dict[str, Any])
+    # Guaranteed 2-element tuple return
     return text, metadata
