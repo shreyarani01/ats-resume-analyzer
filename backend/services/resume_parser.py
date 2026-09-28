@@ -13,7 +13,14 @@ security = HTTPBearer()
 
 logger = logging.getLogger("ats_resume_scorer")
 
+class FileParsingError(Exception):
+    """Raised when text extraction from a file fails."""
+    pass
 
+
+class FileValidationError(Exception):
+    """Raised when file type or file content validation fails."""
+    pass
 def extract_text_from_pdf(file_bytes: bytes) -> str:
     """Extract text from PDF using pdfplumber with pypdf fallback."""
     text = ""
@@ -68,7 +75,20 @@ def validate_and_extract_text(file_bytes: bytes, filename: str) -> str:
             status_code=400,
             detail="Unsupported file format. Please upload a PDF or DOCX file."
         )
+# 3. Main parser entry point expected by routes
+def parse_resume_file(file_bytes: bytes, filename: str) -> str:
+    """Validate extension and extract resume text cleanly without libmagic/python-magic."""
+    if not file_bytes:
+        raise FileValidationError("Uploaded file is empty.")
 
+    filename_lower = filename.lower()
+
+    if filename_lower.endswith(".pdf"):
+        return extract_text_from_pdf(file_bytes)
+    elif filename_lower.endswith((".docx", ".doc")):
+        return extract_text_from_docx(file_bytes)
+    else:
+        raise FileValidationError("Unsupported file format. Please upload a PDF or DOCX file.")
 
 @router.post("/analyze-resume")
 async def analyze_resume(
