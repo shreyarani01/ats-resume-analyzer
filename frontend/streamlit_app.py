@@ -3,7 +3,6 @@ import sys
 from pathlib import Path
 
 # Put the repo root on sys.path so `from frontend.views import ...` resolves
-# regardless of the directory streamlit was launched from.
 sys.path.insert(0, str(Path(__file__).parent.parent))
 
 # Configure page
@@ -14,12 +13,15 @@ st.set_page_config(
     initial_sidebar_state="expanded"
 )
 
-# Auth state. Populated by Supabase sign-in / sign-up / OAuth.
-# All four are None when signed out, all four are set when signed in.
+# 1. Initialize session state for view management (defaults to 'landing')
+if 'current_view' not in st.session_state:
+    st.session_state.current_view = 'landing'
+
+# Auth state defaults
 for key, default in [
     ("access_token", None),
     ("refresh_token", None),
-    ("user_id", None),       # Supabase auth user id (uuid); also used by api_client
+    ("user_id", None),       # Supabase auth user id (uuid)
     ("user_email", None),
     ("auth_error", None),
     ("auth_info", None),
@@ -27,8 +29,7 @@ for key, default in [
     if key not in st.session_state:
         st.session_state[key] = default
 
-# If we just came back from Google OAuth, Supabase appends `?code=<authcode>`
-# to the redirect URL. Exchange it for a session before rendering anything.
+# If coming back from Google OAuth
 if (
     not st.session_state.access_token
     and "code" in st.query_params
@@ -36,7 +37,7 @@ if (
     from frontend.services import supabase_clients
     result = supabase_clients.exchange_code_for_session(st.query_params["code"])
 
-    #Always clear the ?code= param so a refresh doesn't try to re-exchange.
+    # Always clear the ?code= param so a refresh doesn't try to re-exchange.
     st.query_params.clear()
     if "error" in result:
         st.session_state.auth_error = f"Google sign-in failed: {result['error']}"
@@ -45,9 +46,11 @@ if (
         st.session_state.refresh_token = result["refresh_token"]
         st.session_state.user_id       = result["user_id"]
         st.session_state.user_email    = result["email"]
+        # Explicitly keep current view on landing/home after OAuth return
+        st.session_state.current_view = 'landing'
         st.rerun()
 
-#Load custom CSS
+# Load custom CSS
 def load_css():
     try:
         css_path = Path(__file__).parent / 'assets' / 'styles.css'
@@ -58,27 +61,24 @@ def load_css():
 
 st.markdown(load_css(), unsafe_allow_html=True)
 
-# Initialize session state for view management
-if 'current_view' not in st.session_state:
-    st.session_state.current_view = 'landing'
-
 # Sidebar navigation
 with st.sidebar:
     st.markdown("## Navigation")
     
-    if st.button("🏠 Home", use_container_width=True):
+    # Highlight active button visually or handle switching
+    if st.button("🏠 Home", use_container_width=True, type="primary" if st.session_state.current_view == 'landing' else "secondary"):
         st.session_state.current_view = 'landing'
         st.rerun()
     
-    if st.button("🎯 ATS Scorer", use_container_width=True):
+    if st.button("🎯 ATS Scorer", use_container_width=True, type="primary" if st.session_state.current_view == 'scorer' else "secondary"):
         st.session_state.current_view = 'scorer'
         st.rerun()
     
-    if st.button("📊 History", use_container_width=True):
+    if st.button("📊 History", use_container_width=True, type="primary" if st.session_state.current_view == 'history' else "secondary"):
         st.session_state.current_view = 'history'
         st.rerun()
     
-    if st.button("📚 Resources", use_container_width=True):
+    if st.button("📚 Resources", use_container_width=True, type="primary" if st.session_state.current_view == 'resources' else "secondary"):
         st.session_state.current_view = 'resources'
         st.rerun()
     
@@ -94,9 +94,10 @@ with st.sidebar:
             supabase_clients.sign_out()
             for k in ("access_token", "refresh_token", "user_id", "user_email"):
                 st.session_state[k] = None
+            st.session_state.current_view = 'landing'
             st.rerun()
     else:
-        # Signed-out state: tabs for sign-in vs sign-up + Google OAuth button.
+        # Signed-out state
         if st.session_state.auth_error:
             st.error(st.session_state.auth_error)
             st.session_state.auth_error = None
@@ -120,6 +121,7 @@ with st.sidebar:
                     st.session_state.refresh_token = result["refresh_token"]
                     st.session_state.user_id       = result["user_id"]
                     st.session_state.user_email    = result["email"]
+                    st.session_state.current_view  = 'landing'
                 st.rerun()
 
         with tab_up:
@@ -140,6 +142,7 @@ with st.sidebar:
                     st.session_state.refresh_token = result["refresh_token"]
                     st.session_state.user_id       = result["user_id"]
                     st.session_state.user_email    = result["email"]
+                    st.session_state.current_view  = 'landing'
                 st.rerun()
 
         st.markdown("<div style='text-align:center; margin: 8px 0; color:#94a3b8;'>or</div>",
@@ -155,23 +158,19 @@ with st.sidebar:
                 use_container_width=True,
             )
 
-# Main content area - render based on current view
-if st.session_state.current_view == 'landing':
-    # Import and render landing page
-    from frontend.views import landing
-    landing.render()
+# Main content area - fallback to landing if view is unknown
+current_view = st.session_state.get('current_view', 'landing')
 
-elif st.session_state.current_view == 'scorer':
-    # Import and render scorer page
+if current_view == 'scorer':
     from frontend.views import scorer
     scorer.render()
-
-elif st.session_state.current_view == 'history':
-    # Import and render history page
+elif current_view == 'history':
     from frontend.views import history
     history.render()
-
-elif st.session_state.current_view == 'resources':
-    # Import and render resources page
+elif current_view == 'resources':
     from frontend.views import resources
     resources.render()
+else:
+    # Default landing home view
+    from frontend.views import landing
+    landing.render()
