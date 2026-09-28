@@ -158,19 +158,25 @@ with st.sidebar:
                 use_container_width=True,
             )
 
-# Main content area - fallback to landing if view is unknown
+# Main content area
 current_view = st.session_state.get('current_view', 'landing')
 
-if current_view == 'scorer':
+if current_view in ('landing', 'home'):
+    from frontend.views import landing
+    landing.render()
+
+elif current_view == 'scorer':
     from frontend.views import scorer
     scorer.render()
+
 elif current_view == 'history':
     from frontend.views import history
     history.render()
+
 elif current_view == 'resources':
     from frontend.views import resources
     resources.render()
+
 else:
-    # Default landing home view
     from frontend.views import landing
     landing.render()
