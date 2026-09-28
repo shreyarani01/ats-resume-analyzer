@@ -9,14 +9,17 @@ logger = logging.getLogger("ats_resume_scorer")
 
 
 class FileParsingError(Exception):
+    """Raised when text extraction from a file fails."""
     pass
 
 
 class FileValidationError(Exception):
+    """Raised when file type or file content validation fails."""
     pass
 
 
 def extract_text_from_pdf(file_bytes: bytes) -> str:
+    """Extract text from PDF using pdfplumber with pypdf fallback."""
     text = ""
     try:
         with pdfplumber.open(io.BytesIO(file_bytes)) as pdf:
@@ -43,6 +46,7 @@ def extract_text_from_pdf(file_bytes: bytes) -> str:
 
 
 def extract_text_from_docx(file_bytes: bytes) -> str:
+    """Extract text from DOCX file using python-docx."""
     try:
         doc = docx.Document(io.BytesIO(file_bytes))
         full_text = [para.text for para in doc.paragraphs if para.text.strip()]
