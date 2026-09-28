@@ -1,20 +1,22 @@
 import io
 import logging
-from typing import Dict, Any, Tuple
+from typing import Any, Dict, Tuple
 
-import pdfplumber
 import docx
+import pdfplumber
 
 logger = logging.getLogger("ats_resume_scorer")
 
 
 class FileParsingError(Exception):
     """Raised when text extraction from a file fails."""
+
     pass
 
 
 class FileValidationError(Exception):
     """Raised when file type or file content validation fails."""
+
     pass
 
 
@@ -31,6 +33,7 @@ def extract_text_from_pdf(file_bytes: bytes) -> str:
         logger.warning(f"pdfplumber failed: {e}. Trying pypdf fallback...")
         try:
             import pypdf
+
             reader = pypdf.PdfReader(io.BytesIO(file_bytes))
             for page in reader.pages:
                 extracted = page.extract_text()
@@ -38,10 +41,14 @@ def extract_text_from_pdf(file_bytes: bytes) -> str:
                     text += extracted + "\n"
         except Exception as fallback_err:
             logger.error(f"pypdf fallback failed: {fallback_err}")
-            raise FileParsingError(f"Could not parse PDF content: {fallback_err}")
+            raise FileParsingError(
+                f"Could not parse PDF content: {fallback_err}"
+            )
 
     if not text.strip():
-        raise FileParsingError("PDF file appears to be empty or contains scanned images without selectable text.")
+        raise FileParsingError(
+            "PDF file appears to be empty or contains scanned images without selectable text."
+        )
     return text.strip()
 
 
@@ -59,23 +66,30 @@ def extract_text_from_docx(file_bytes: bytes) -> str:
         raise FileParsingError(f"Could not parse DOCX content: {e}")
 
 
-def parse_resume_file(file_bytes: bytes, filename: str) -> Tuple[str, Dict[str, Any]]:
+def parse_resume_file(
+    file_bytes: bytes, filename: str
+) -> Tuple[str, Dict[str, Any]]:
     """Validate extension and return EXACTLY 2 items: (extracted_text, metadata)."""
     if not file_bytes:
         raise FileValidationError("Uploaded file is empty.")
 
     filename_lower = filename.lower()
-    metadata = {
-        "filename": filename,
-        "size_bytes": len(file_bytes),
-        "extension": filename_lower.split(".")[-1] if "." in filename_lower else ""
-    }
+    ext = filename_lower.split(".")[-1] if "." in filename_lower else ""
 
     if filename_lower.endswith(".pdf"):
         text = extract_text_from_pdf(file_bytes)
-        return text, metadata
     elif filename_lower.endswith((".docx", ".doc")):
         text = extract_text_from_docx(file_bytes)
-        return text, metadata
     else:
-        raise FileValidationError("Unsupported file format. Please upload a PDF or DOCX file.")
+        raise FileValidationError(
+            "Unsupported file format. Please upload a PDF or DOCX file."
+        )
+
+    metadata: Dict[str, Any] = {
+        "filename": filename,
+        "size_bytes": len(file_bytes),
+        "extension": ext,
+    }
+
+    # Single return guarantees a 2-tuple: (str, Dict[str, Any])
+    return text, metadata
