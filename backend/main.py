@@ -8,6 +8,7 @@ from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import RedirectResponse
 import httpx
+import numpy as np
 
 load_dotenv()
 
@@ -26,26 +27,39 @@ logger = logging.getLogger("ats_resume_scorer")
 
 # Hugging Face Free API setup to replace local PyTorch/SentenceTransformers
 HF_TOKEN = os.getenv("HF_TOKEN")
-HF_API_URL = f"https://api-inference.huggingface.co/models/{SENTENCE_TRANSFORMER_MODEL}"
+# Clean model name if passed as a full repo or path
+model_identifier = SENTENCE_TRANSFORMER_MODEL.split('/')[-1] if '/' in SENTENCE_TRANSFORMER_MODEL else SENTENCE_TRANSFORMER_MODEL
+HF_API_URL = f"https://api-inference.huggingface.co/pipeline/feature-extraction/{SENTENCE_TRANSFORMER_MODEL}"
 
 class HuggingFaceEmbedder:
-    """Lightweight API client for embeddings (uses ~0 MB RAM)."""
+    """Lightweight API client for embeddings matching SentenceTransformer output structure."""
     def __init__(self, model_url: str, token: str | None = None):
         self.model_url = model_url
         self.headers = {"Authorization": f"Bearer {token}"} if token else {}
 
-    def encode(self, sentences, show_progress_bar=False):
-        if isinstance(sentences, str):
+    def encode(self, sentences, show_progress_bar=False, convert_to_numpy=True, normalize_embeddings=True):
+        is_single = isinstance(sentences, str)
+        if is_single:
             sentences = [sentences]
-            
-        with httpx.Client(timeout=30.0) as client:
+
+        with httpx.Client(timeout=60.0) as client:
             response = client.post(
                 self.model_url,
                 headers=self.headers,
                 json={"inputs": sentences, "options": {"wait_for_model": True}},
             )
             response.raise_for_status()
-            return response.json()
+            data = response.json()
+
+        # Format array into numpy array matching sentence-transformers format
+        arr = np.array(data)
+        if convert_to_numpy:
+            if normalize_embeddings:
+                norm = np.linalg.norm(arr, axis=-1, keepdims=True)
+                norm[norm == 0] = 1e-12
+                arr = arr / norm
+            return arr[0] if is_single else arr
+        return data
 
 
 @asynccontextmanager
@@ -94,13 +108,19 @@ app = FastAPI(
     redoc_url="/redoc",
 )
 
+# Fix CORS Settings: Disable allow_credentials when wildcard '*' origins are used
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=ALLOWED_ORIGINS,
-    allow_credentials=True,
+    allow_origins=["*"],
+    allow_credentials=False,
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+
+@app.get("/")
+async def root():
+    return {"status": "online", "message": "ATS Resume Analyzer API is running!"}
 
 
 @app.get("/auth/callback")
