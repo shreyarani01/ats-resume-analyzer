@@ -1,12 +1,23 @@
 --extra-index-url https://download.pytorch.org/whl/cpu
+
+# Core Libraries
 torch
 sentence-transformers
+
+# Web Framework & Server
 fastapi
-uvicorn
+uvicorn[standard]
+gunicorn
 python-multipart
 python-dotenv
+
+# Database & Data
 supabase
 pypdf
 pandas
 requests
-spacy
+
+# spaCy & Language Models
+spacy>=3.7.0
+https://github.com/explosion/spacy-models/releases/download/en_core_web_sm-3.8.0/en_core_web_sm-3.8.0-py3-none-any.whl
+https://github.com/explosion/spacy-models/releases/download/en_core_web_md-3.8.0/en_core_web_md-3.8.0-py3-none-any.whl
