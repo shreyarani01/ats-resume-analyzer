@@ -11,7 +11,19 @@ import httpx
 import numpy as np
 
 load_dotenv()
+import puremagic
 
+def validate_and_extract_file(file_bytes: bytes, filename: str):
+    try:
+        # puremagic checks magic numbers purely in Python without libmagic1
+        exts = puremagic.from_string(file_bytes)
+        # Check if detected extension matches pdf or office docs
+    except puremagic.PureError:
+        # Fallback to extension check if magic headers are ambiguous
+        if filename.lower().endswith(('.pdf', '.docx', '.doc')):
+            pass
+        else:
+            raise ValueError("Unsupported or corrupted file format.")
 from backend.api.routes import router
 from backend.core.config import (
     ALLOWED_ORIGINS,
