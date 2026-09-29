@@ -66,10 +66,14 @@ def parse_resume_file(file_bytes: bytes, filename: str) -> Tuple[str, Dict[str, 
         raise FileValidationError("Uploaded file is empty.")
 
     filename_lower = filename.lower()
+    
+    # Safe splitting: maxsplit=1 avoids multi-dot filename unpacking crashes
+    ext = filename_lower.rsplit(".", 1)[-1] if "." in filename_lower else ""
+
     metadata = {
         "filename": filename,
         "size_bytes": len(file_bytes),
-        "extension": filename_lower.split(".")[-1] if "." in filename_lower else ""
+        "extension": ext
     }
 
     if filename_lower.endswith(".pdf"):
