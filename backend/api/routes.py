@@ -1,86 +1,51 @@
-import io
 import logging
-from typing import Dict, Any, Tuple
+from typing import Optional
 
-import pdfplumber
-import docx
+from fastapi import APIRouter, File, Form, HTTPException, UploadFile, status
+
+from backend.services.resume_parser import (
+    FileParsingError,
+    FileValidationError,
+    parse_resume_file,
+)
 
 logger = logging.getLogger("ats_resume_scorer")
 
-
-# Custom Exceptions expected by API routes
-class FileParsingError(Exception):
-    """Raised when text extraction from a file fails."""
-    pass
+router = APIRouter(prefix="/api/v1", tags=["resume"])
 
 
-class FileValidationError(Exception):
-    """Raised when file type or file content validation fails."""
-    pass
+@router.post("/parse-resume")
+async def parse_resume_endpoint(file: UploadFile = File(...)):
+    """Upload and parse a resume file (PDF or DOCX)."""
+    if not file or not file.filename:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="No file uploaded or filename is missing.",
+        )
 
-
-def extract_text_from_pdf(file_bytes: bytes) -> str:
-    """Extract text from PDF using pdfplumber with pypdf fallback."""
-    text = ""
     try:
-        with pdfplumber.open(io.BytesIO(file_bytes)) as pdf:
-            for page in pdf.pages:
-                extracted = page.extract_text()
-                if extracted:
-                    text += extracted + "\n"
-    except Exception as e:
-        logger.warning(f"pdfplumber failed: {e}. Trying pypdf fallback...")
-        try:
-            import pypdf
-            reader = pypdf.PdfReader(io.BytesIO(file_bytes))
-            for page in reader.pages:
-                extracted = page.extract_text()
-                if extracted:
-                    text += extracted + "\n"
-        except Exception as fallback_err:
-            logger.error(f"pypdf fallback failed: {fallback_err}")
-            raise FileParsingError(f"Could not parse PDF content: {fallback_err}")
+        file_bytes = await file.read()
+        if not file_bytes:
+            raise FileValidationError("Uploaded file is empty.")
 
-    if not text.strip():
-        raise FileParsingError("PDF file appears to be empty or contains scanned images without selectable text.")
-    return text.strip()
+        # Safely unpack EXACTLY 2 values (extracted_text, metadata)
+        extracted_text, metadata = parse_resume_file(file_bytes, file.filename)
 
+        return {
+            "status": "success",
+            "text": extracted_text,
+            "metadata": metadata,
+        }
 
-def extract_text_from_docx(file_bytes: bytes) -> str:
-    """Extract text from DOCX file using python-docx."""
-    try:
-        doc = docx.Document(io.BytesIO(file_bytes))
-        full_text = [para.text for para in doc.paragraphs if para.text.strip()]
-        text = "\n".join(full_text)
-        if not text.strip():
-            raise FileParsingError("DOCX file contains no readable text.")
-        return text.strip()
-    except Exception as e:
-        logger.error(f"DOCX extraction failed: {e}")
-        raise FileParsingError(f"Could not parse DOCX content: {e}")
-
-
-def parse_resume_file(file_bytes: bytes, filename: str) -> Tuple[str, Dict[str, Any]]:
-    """Validate extension and return (extracted_text, metadata) matching routes expectation."""
-    if not file_bytes:
-        raise FileValidationError("Uploaded file is empty.")
-
-    filename_lower = filename.lower()
-    
-    # Safe splitting: maxsplit=1 avoids multi-dot filename unpacking crashes
-    ext = filename_lower.rsplit(".", 1)[-1] if "." in filename_lower else ""
-
-    metadata = {
-        "filename": filename,
-        "size_bytes": len(file_bytes),
-        "extension": ext
-    }
-
-    if filename_lower.endswith(".pdf"):
-        text = extract_text_from_pdf(file_bytes)
-        return text, metadata
-    elif filename_lower.endswith((".docx", ".doc")):
-        text = extract_text_from_docx(file_bytes)
-        return text, metadata
-    else:
-        raise FileValidationError("Unsupported file format. Please upload a PDF or DOCX file.")
+    except (FileParsingError, FileValidationError) as err:
+        logger.warning(f"File parsing error for {file.filename}: {err}")
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            detail=f"Could not read or parse the resume: {str(err)}",
+        )
+    except Exception as err:
+        logger.error(f"Unexpected error parsing resume {file.filename}: {err}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"An unexpected error occurred while processing the file: {str(err)}",
+        )

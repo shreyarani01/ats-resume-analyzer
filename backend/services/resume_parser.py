@@ -10,13 +10,11 @@ logger = logging.getLogger("ats_resume_scorer")
 
 class FileParsingError(Exception):
     """Raised when text extraction from a file fails."""
-
     pass
 
 
 class FileValidationError(Exception):
     """Raised when file type or file content validation fails."""
-
     pass
 
 
@@ -33,7 +31,6 @@ def extract_text_from_pdf(file_bytes: bytes) -> str:
         logger.warning(f"pdfplumber failed: {e}. Trying pypdf fallback...")
         try:
             import pypdf
-
             reader = pypdf.PdfReader(io.BytesIO(file_bytes))
             for page in reader.pages:
                 extracted = page.extract_text()
@@ -41,14 +38,10 @@ def extract_text_from_pdf(file_bytes: bytes) -> str:
                     text += extracted + "\n"
         except Exception as fallback_err:
             logger.error(f"pypdf fallback failed: {fallback_err}")
-            raise FileParsingError(
-                f"Could not parse PDF content: {fallback_err}"
-            )
+            raise FileParsingError(f"Could not parse PDF content: {fallback_err}")
 
     if not text.strip():
-        raise FileParsingError(
-            "PDF file appears to be empty or contains scanned images without selectable text."
-        )
+        raise FileParsingError("PDF file appears to be empty or contains scanned images without selectable text.")
     return text.strip()
 
 
@@ -87,5 +80,4 @@ def parse_resume_file(file_bytes: bytes, filename: str) -> Tuple[str, Dict[str, 
         "extension": ext,
     }
 
-    # Guaranteed 2-element tuple
     return text, metadata
