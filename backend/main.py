@@ -9,21 +9,10 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import RedirectResponse
 import httpx
 import numpy as np
-
-load_dotenv()
 import puremagic
 
-def validate_and_extract_file(file_bytes: bytes, filename: str):
-    try:
-        # puremagic checks magic numbers purely in Python without libmagic1
-        exts = puremagic.from_string(file_bytes)
-        # Check if detected extension matches pdf or office docs
-    except puremagic.PureError:
-        # Fallback to extension check if magic headers are ambiguous
-        if filename.lower().endswith(('.pdf', '.docx', '.doc')):
-            pass
-        else:
-            raise ValueError("Unsupported or corrupted file format.")
+load_dotenv()
+
 from backend.api.routes import router
 from backend.core.config import (
     ALLOWED_ORIGINS,
@@ -37,6 +26,32 @@ from backend.core.config import (
 
 logger = logging.getLogger("ats_resume_scorer")
 
+
+def validate_and_extract_file(file_bytes: bytes, filename: str) -> bool:
+    """Validate file type using puremagic with fallback to file extension check."""
+    if not file_bytes:
+        raise ValueError("Uploaded file is empty.")
+
+    filename_lower = filename.lower()
+    valid_extensions = (".pdf", ".docx", ".doc")
+
+    try:
+        # puremagic.from_string returns list of 4-element tuples: [(ext, mime, name, confidence), ...]
+        matches = puremagic.from_string(file_bytes)
+        if matches:
+            detected_exts = [match[0].lower() for match in matches if match[0]]
+            if any(ext in (".pdf", ".docx", ".doc") for ext in detected_exts):
+                return True
+    except puremagic.PureError:
+        logger.warning(f"puremagic header detection failed for {filename}. Falling back to extension check.")
+
+    # Fallback to extension check
+    if filename_lower.endswith(valid_extensions):
+        return True
+
+    raise ValueError("Unsupported or corrupted file format. Please upload a PDF or DOCX file.")
+
+
 # Hugging Face Free API setup to replace local PyTorch/SentenceTransformers
 HF_TOKEN = os.getenv("HF_TOKEN")
 model_identifier = SENTENCE_TRANSFORMER_MODEL.split('/')[-1] if '/' in SENTENCE_TRANSFORMER_MODEL else SENTENCE_TRANSFORMER_MODEL
@@ -45,8 +60,10 @@ HF_API_URL = f"https://api-inference.huggingface.co/pipeline/feature-extraction/
 # Live Streamlit App URL for OAuth redirects
 FRONTEND_URL = os.getenv("FRONTEND_URL", "https://pubnp3sbcbnnwu.streamlit.app").rstrip("/")
 
+
 class HuggingFaceEmbedder:
     """Lightweight API client for embeddings matching SentenceTransformer output structure."""
+
     def __init__(self, model_url: str, token: str | None = None):
         self.model_url = model_url
         self.headers = {"Authorization": f"Bearer {token}"} if token else {}
