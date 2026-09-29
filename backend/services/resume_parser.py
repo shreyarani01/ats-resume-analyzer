@@ -66,8 +66,8 @@ def extract_text_from_docx(file_bytes: bytes) -> str:
         raise FileParsingError(f"Could not parse DOCX content: {e}")
 
 
-def parse_resume_file(file_bytes: bytes, filename: str) -> Tuple[str, Dict[str, Any], str]:
-    """Validate extension and return 3 items: (extracted_text, metadata, file_extension)."""
+def parse_resume_file(file_bytes: bytes, filename: str) -> Tuple[str, Dict[str, Any]]:
+    """Validate extension and return EXACTLY 2 items: (extracted_text, metadata)."""
     if not file_bytes:
         raise FileValidationError("Uploaded file is empty.")
 
@@ -87,5 +87,5 @@ def parse_resume_file(file_bytes: bytes, filename: str) -> Tuple[str, Dict[str, 
         "extension": ext
     }
 
-    # Returns 3 items (text, metadata, extension) to match callers expecting 3 values
-    return text, metadata, ext
+    # ✅ Guaranteed 2-element tuple return to match routes.py
+    return text, metadata
