@@ -7,11 +7,78 @@ sys.path.insert(0, str(Path(__file__).parent.parent))
 
 # Configure page
 st.set_page_config(
-    page_title="ATS Resume Scorer",
-    page_icon="🎯",
+    page_title="ATS Resume Scorer Pro",
+    page_icon="⚡",
     layout="wide",
     initial_sidebar_state="expanded"
 )
+
+# Inject Custom UI Styling & Glassmorphism Theme
+CUSTOM_UI_CSS = """
+<style>
+    /* Main Background Glow & Color Palette */
+    .stApp {
+        background: radial-gradient(circle at top right, #1E1B4B 0%, #0F172A 50%, #020617 100%);
+        color: #F8FAFC;
+    }
+
+    /* Sidebar Clean Styling */
+    section[data-testid="stSidebar"] {
+        background-color: #0F172A !important;
+        border-right: 1px solid #334155 !important;
+    }
+
+    /* Primary Navigation & Action Buttons */
+    .stButton > button {
+        border-radius: 10px !important;
+        font-weight: 600 !important;
+        border: 1px solid rgba(255, 255, 255, 0.08) !important;
+        transition: all 0.3s ease !important;
+    }
+
+    /* Hover effect for buttons */
+    .stButton > button:hover {
+        transform: translateY(-2px) !important;
+        box-shadow: 0 6px 20px rgba(16, 185, 129, 0.25) !important;
+    }
+
+    /* Target Metrics & Key Score Outputs */
+    div[data-testid="stMetricValue"] {
+        font-size: 2.2rem !important;
+        font-weight: 800 !important;
+        background: linear-gradient(90deg, #10B981, #3B82F6);
+        -webkit-background-clip: text;
+        -webkit-text-fill-color: transparent;
+    }
+
+    /* File Uploader Dropzone */
+    div[data-testid="stFileUploadDropzone"] {
+        border: 2px dashed #334155 !important;
+        border-radius: 12px !important;
+        background-color: #1E293B !important;
+        transition: border-color 0.3s ease !important;
+    }
+
+    div[data-testid="stFileUploadDropzone"]:hover {
+        border-color: #10B981 !important;
+    }
+
+    /* Form Input Container Cards */
+    div[data-testid="stForm"] {
+        background-color: #1E293B !important;
+        border-radius: 12px !important;
+        border: 1px solid #334155 !important;
+        padding: 1.25rem !important;
+    }
+
+    /* Tabs Styling */
+    button[data-baseweb="tab"] {
+        font-weight: 600 !important;
+    }
+</style>
+"""
+
+st.markdown(CUSTOM_UI_CSS, unsafe_allow_html=True)
 
 # 1. Initialize session state for view management (defaults to 'landing')
 if 'current_view' not in st.session_state:
@@ -50,7 +117,7 @@ if (
         st.session_state.current_view = 'landing'
         st.rerun()
 
-# Load custom CSS
+# Load custom external CSS if present
 def load_css():
     try:
         css_path = Path(__file__).parent / 'assets' / 'styles.css'
@@ -158,7 +225,7 @@ with st.sidebar:
                 use_container_width=True,
             )
 
-# Main content area
+# Main content area routing
 current_view = st.session_state.get('current_view', 'landing')
 
 if current_view in ('landing', 'home'):
