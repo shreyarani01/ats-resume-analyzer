@@ -73,7 +73,7 @@ def parse_resume_file(file_bytes: bytes, filename: str) -> Tuple[str, Dict[str, 
 
     filename_lower = filename.lower()
     ext = filename_lower.rsplit(".", 1)[-1] if "." in filename_lower else ""
-    
+
     if filename_lower.endswith(".pdf"):
         text = extract_text_from_pdf(file_bytes)
     elif filename_lower.endswith((".docx", ".doc")):
@@ -84,8 +84,8 @@ def parse_resume_file(file_bytes: bytes, filename: str) -> Tuple[str, Dict[str, 
     metadata = {
         "filename": filename,
         "size_bytes": len(file_bytes),
-        "extension": ext
+        "extension": ext,
     }
 
-    # ✅ Guaranteed 2-element tuple return to match routes.py
+    # Guaranteed 2-element tuple
     return text, metadata
