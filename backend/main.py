@@ -60,6 +60,22 @@ HF_API_URL = f"https://api-inference.huggingface.co/pipeline/feature-extraction/
 # Live Streamlit App URL for OAuth redirects
 FRONTEND_URL = os.getenv("FRONTEND_URL", "https://pubnp3sbcbnnwu.streamlit.app").rstrip("/")
 
+ALLOWED_ORIGINS = [
+    FRONTEND_URL,
+    "http://localhost:8501",
+    "http://127.0.0.1:8501",
+]
+
+app = FastAPI()
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=ALLOWED_ORIGINS,
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
+
 
 class HuggingFaceEmbedder:
     """Lightweight API client for embeddings matching SentenceTransformer output structure."""

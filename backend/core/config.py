@@ -1,9 +1,6 @@
 import os
 from pathlib import Path
 
-# Load .env from the project root (two levels up from this file) explicitly —
-# load_dotenv() with no args relies on caller-frame inspection that can fail
-# silently under uvicorn reload, leaving env vars unset.
 try:
     from dotenv import load_dotenv
     _ENV_PATH = Path(__file__).resolve().parents[2] / '.env'
@@ -17,7 +14,9 @@ APP_VERSION='1.0.0'
 APP_DESCRIPTION='analyse resumes against job description using nlp + ml'
 
 ALLOWED_ORIGINS = [
-    'https://ats-resume-analyzer-krq26dappubnp3sbcbnnwu.streamlit.app'
+    "https://ats-resume-analyzer-krq26dappubnp3sbcbnnwu.streamlit.app",
+    "http://localhost:8501",
+    "http://127.0.0.1:8501",
 ]  
 
 #file 
