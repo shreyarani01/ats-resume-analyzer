@@ -1,8 +1,8 @@
 [theme]
-primaryColor = "#4F46E5"
-backgroundColor = "#FFFFFF"
-secondaryBackgroundColor = "#F8FAFC"
-textColor = "#1E293B"
+primaryColor = "#10B981"               # Emerald Green accent
+backgroundColor = "#0F172A"            # Dark Navy / Slate background
+secondaryBackgroundColor = "#1E293B"  # Darker Slate for sidebar & cards
+textColor = "#F8FAFC"                  # Crisp white text
 font = "sans serif"
 
 [server]
